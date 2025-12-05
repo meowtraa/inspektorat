@@ -2,11 +2,11 @@
 
 namespace App\Imports;
 
-use App\Models\TlBpk;
+use App\Models\TlJabar;
 use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Row;
 
-class TlBpkImport implements OnEachRow
+class TlJabarImport implements OnEachRow
 {
     protected int $tahun;
 
@@ -24,19 +24,12 @@ class TlBpkImport implements OnEachRow
         $text = preg_replace('/\s+/', ' ', $text);
         $text = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $text);
 
-        // Normalisasi Kecamatan → tidak disingkat
         $text = preg_replace('/^(Kecamatan|KECAMATAN|Kec|KEC)\.?[\s]+/i', 'Kecamatan ', $text);
-
-        // Normalisasi Desa → tidak disingkat
         $text = preg_replace('/^(Desa|DESA|Ds|DS)\.?[\s]+/i', 'Desa ', $text);
 
-        // Hilangkan titik berulang
         $text = preg_replace('/\.+/', '.', $text);
 
-        // Capital Case
-        $text = ucwords(strtolower($text));
-
-        return $text;
+        return ucwords(strtolower($text));
     }
 
     public function onRow(Row $row): void
@@ -46,7 +39,6 @@ class TlBpkImport implements OnEachRow
         $nama = $this->normalize($data[0] ?? '');
         $persen = trim($data[1] ?? '0');
 
-        // Buang karakter selain angka/koma/titik
         $persen = preg_replace('/[^0-9.,]/', '', $persen);
         $persen = str_replace(',', '.', $persen);
 
@@ -54,7 +46,7 @@ class TlBpkImport implements OnEachRow
             return;
         }
 
-        TlBpk::updateOrCreate(
+        TlJabar::updateOrCreate(
             [
                 'nama_skpd' => $nama,
                 'tahun' => $this->tahun,
