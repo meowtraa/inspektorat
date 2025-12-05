@@ -13,19 +13,16 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
-            \App\Filament\Resources\TlKabResource\Widgets\TlKabSummary::class,
+            \App\Filament\Resources\HeaderResource\Widgets\HeadingSectionBpk::class,
+            \App\Filament\Resources\TlBpkResource\Widgets\TlBpkSummary::class,
             \App\Filament\Widgets\TopBpkChart::class,
+            \App\Filament\Resources\HeaderResource\Widgets\HeadingSectionJabar::class,
+            \App\Filament\Resources\TlJabarResource\Widgets\TlJabarSummary::class,
+            \App\Filament\Widgets\TopJabarChart::class,
+            \App\Filament\Resources\HeaderResource\Widgets\HeadingSectionKab::class,
+            \App\Filament\Resources\TlKabResource\Widgets\TlKabSummary::class,
+            \App\Filament\Widgets\TopKabChart::class,
 
-        ];
-    }
-
-    public function getColumns(): int|string|array
-    {
-        return [
-            'default' => 1,
-            'md' => 1,
-            'lg' => 1,
-            'xl' => 1,
         ];
     }
 }
