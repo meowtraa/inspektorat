@@ -124,7 +124,18 @@ class TlJabarResource extends Resource
                         return number_format($state, 2, ',', '.').' %';
                     }),
             ])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make()
 
+                    ->label('Hapus Terpilih')
+                    ->color('danger')
+                    ->icon('heroicon-o-trash')
+                    ->requiresConfirmation()
+                    ->modalHeading('Konfirmasi Hapus')
+                    ->modalDescription('Apakah kamu yakin ingin menghapus data yang dipilih? Tindakan ini tidak bisa dibatalkan.')
+                    ->modalSubmitActionLabel('Ya, Hapus')
+                    ->modalCancelActionLabel('Batal'),
+            ])
             ->filters([
                 Tables\Filters\SelectFilter::make('tahun')
                     ->label('Tahun')
