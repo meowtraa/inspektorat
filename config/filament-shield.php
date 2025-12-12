@@ -57,7 +57,7 @@ return [
         'resources' => true,
         'custom_permissions' => false,
     ],
-
+    
     'generator' => [
         'option' => 'policies_and_permissions',
         'policy_directory' => 'Policies',
