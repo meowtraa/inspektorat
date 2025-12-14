@@ -8,32 +8,96 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class TlBpkSummary extends BaseWidget
 {
-    protected static ?string $pollingInterval = '10s'; // refresh otomatis (opsional)
+    protected static ?string $pollingInterval = '10s';
 
     protected function getStats(): array
     {
-        $avg = TlBpk::avg('persentase_tl') ?? 0;
+        // Ambil tahun & semester TERBARU
+        $latest = TlBpk::query()
+            ->select('tahun', 'semester')
+            ->orderByDesc('tahun')
+            ->orderByDesc('semester')
+            ->first();
 
-        $hijau = TlBpk::where('persentase_tl', '>=', 80)->count();
-        $kuning = TlBpk::whereBetween('persentase_tl', [60, 79.99])->count();
-        $merah = TlBpk::where('persentase_tl', '<', 60)->count();
+        if (! $latest) {
+            return [
+                Stat::make('Belum Ada Data', '-')
+                    ->description('Data TL BPK belum tersedia')
+                    ->color('gray'),
+            ];
+        }
+
+        // Query data tahun & semester terbaru
+        $query = TlBpk::query()
+            ->where('tahun', $latest->tahun)
+            ->where('semester', $latest->semester);
+
+        /* =========================
+         * AGREGAT UTAMA
+         * ========================= */
+        $totalRekomendasi = (int) $query->sum('jumlah_rekomendasi');
+        $totalSesuai = (int) $query->sum('sesuai');
+        $totalBelumSesuai = (int) $query->sum('belum_sesuai');
+        $totalBelumDitindaklanjuti = (int) $query->sum('belum_ditindaklanjuti');
+
+        $avgPersentase = $totalRekomendasi > 0
+            ? round(($totalSesuai / $totalRekomendasi) * 100, 2)
+            : 0;
+
+        /* =========================
+         * KATEGORI SKPD
+         * ========================= */
+        $records = $query->get();
+
+        $hijau = $records->filter(fn ($r) => $r->persentase_tl >= 80)->count();
+        $kuning = $records->filter(fn ($r) => $r->persentase_tl >= 60 && $r->persentase_tl < 80)->count();
+        $merah = $records->filter(fn ($r) => $r->persentase_tl < 60)->count();
 
         return [
-            Stat::make('Rata-rata Persentase TL', number_format($avg, 2, ',', '.').' %')
-                ->color($avg >= 80 ? 'success' : ($avg >= 60 ? 'warning' : 'danger'))
-                ->description('Rata-rata semua SKPD'),
 
-            Stat::make('Diatas 80%', $hijau)
-                ->color('success')
-                ->description('SKPD'),
+            /* ===== RATA-RATA TL ===== */
+            Stat::make(
+                'Rata-rata Persentase TL',
+                number_format($avgPersentase, 2, ',', '.').' %'
+            )
+                ->description("Tahun {$latest->tahun} • Semester {$latest->semester}")
+                ->color(
+                    $avgPersentase >= 80
+                        ? 'success'
+                        : ($avgPersentase >= 60 ? 'warning' : 'danger')
+                ),
 
-            Stat::make('60% - 79%', $kuning)
-                ->color('warning')
-                ->description('SKPD'),
-            Stat::make('Dibawah 60%', $merah)
-                ->color('danger')
-                ->description('SKPD'),
+            /* ===== TOTAL REKOMENDASI ===== */
+
+            /* ===== KATEGORI SKPD ===== */
+            Stat::make('SKPD ≥ 80%', $hijau)
+                ->description('Sangat Baik')
+                ->color('success'),
+
+            Stat::make('SKPD 60–79%', $kuning)
+                ->description('Cukup')
+                ->color('warning'),
+
+            Stat::make('SKPD < 60%', $merah)
+                ->description('Perlu Perhatian')
+                ->color('danger'),  Stat::make('Total Rekomendasi', number_format($totalRekomendasi, 0, ',', '.'))
+                ->description('Seluruh SKPD')
+                ->color('primary'),
+
+            /* ===== SESUAI ===== */
+            Stat::make('Sesuai', number_format($totalSesuai, 0, ',', '.'))
+                ->description('Rekomendasi')
+                ->color('success'),
+
+            /* ===== BELUM SESUAI ===== */
+            Stat::make('Belum Sesuai', number_format($totalBelumSesuai, 0, ',', '.'))
+                ->description('Rekomendasi')
+                ->color('warning'),
+
+            /* ===== BELUM DITINDAKLANJUTI ===== */
+            Stat::make('Belum Ditindaklanjuti', number_format($totalBelumDitindaklanjuti, 0, ',', '.'))
+                ->description('Rekomendasi')
+                ->color('danger'),
         ];
-
     }
 }

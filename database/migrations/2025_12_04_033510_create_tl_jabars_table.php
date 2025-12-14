@@ -22,7 +22,7 @@ return new class extends Migration
             // Unique gabungan
             $table->unique(
                 ['nama_skpd', 'tahun', 'semester'],
-                'tl_bpk_unique_skpd_tahun_semester'
+                   'tl_jabars_unique_skpd_tahun_semester'
             );
         });
     }

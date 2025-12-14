@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TlBpkResource\Pages;
 use App\Models\TlBpk;
+use App\Imports\TlBpkImport;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -11,6 +12,10 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Maatwebsite\Excel\Facades\Excel;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Storage;
 
 class TlBpkResource extends Resource
 {
@@ -18,129 +23,161 @@ class TlBpkResource extends Resource
 
     protected static ?string $navigationGroup = 'Tindak Lanjut';
 
-    protected static ?string $navigationLabel = 'TL BPK';
+    protected static ?string $navigationLabel = 'TLHP BPK';
 
     protected static ?string $pluralModelLabel = 'Tindak Lanjut Hasil Pemeriksaan BPK RI';
 
-    protected static ?string $icon = 'heroicon-o-chart-bar';
+    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
 
+    /* =========================
+     * FORM (CREATE & EDIT)
+     * ========================= */
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                TextInput::make('nama_skpd')
-                    ->label('Nama SKPD')
-                    ->placeholder('Masukkan nama SKPD')
-                    ->markAsRequired() // cuma untuk tampilan bintang merah
-                    ->rules(['required'])
-                    ->validationMessages([
-                        'required' => 'Nama SKPD wajib diisi.',
-                    ]),
+        return $form->schema([
 
-                TextInput::make('persentase_tl')
-                    ->suffix('%')
-                    ->label('Persentase TL (%)')
-                    ->numeric()
-                    ->placeholder('Contoh: 80.50')
-                    ->minValue(0)
-                    ->maxValue(100)
-                    ->default(0)
-                    ->markAsRequired()
-                    ->rules(['required', 'numeric', 'min:0', 'max:100'])
-                    ->validationMessages([
-                        'required' => 'Persentase wajib diisi.',
-                        'numeric' => 'Persentase harus berupa angka.',
-                        'min' => 'Persentase minimal 0%.',
-                        'max' => 'Persentase maksimal 100%.',
-                    ]),
+            TextInput::make('nama_skpd')
+                ->label('Nama SKPD')
+                ->required()
+                ->maxLength(255),
 
-                TextInput::make('tahun')
-                    ->label('Tahun')
-                    ->placeholder('Contoh: 2025')
-                    ->numeric()
-                    ->default(date('Y'))
-                    ->markAsRequired()
-                    ->minValue(2020)
-                    ->maxValue(date('Y'))
-                    ->rules([
-                        'required',
-                        'integer',
-                        'min:2020',
-                        'max:'.date('Y'),
-                    ])
-                    ->validationMessages([
-                        'required' => 'Tahun wajib diisi.',
-                        'integer' => 'Tahun harus berupa angka.',
-                        'min' => 'Tahun minimal 2020.',
-                        'max' => 'Tahun tidak boleh lebih dari tahun sekarang.',
-                    ]),
+            TextInput::make('jumlah_temuan')
+                ->label('Jumlah Temuan')
+                ->numeric()
+                ->minValue(0)
+                ->required()
+                ->default(0),
 
-                Select::make('semester')
-                    ->label('Semester')
-                    ->options([
-                        1 => 'Semester 1',
-                        2 => 'Semester 2',
-                    ])
-                    ->placeholder('Pilih Semester')
-                    ->markAsRequired()
-                    ->rules(['required', 'in:1,2'])
-                    ->validationMessages([
-                        'required' => 'Semester wajib dipilih.',
-                        'in' => 'Semester tidak valid.',
-                    ]),
-            ]);
+            TextInput::make('jumlah_rekomendasi')
+                ->label('Jumlah Rekomendasi')
+                ->numeric()
+                ->minValue(0)
+                ->required()
+                ->default(0),
+
+            TextInput::make('sesuai')
+                ->label('Sesuai')
+                ->numeric()
+                ->minValue(0)
+                ->required()->default(0),
+
+            TextInput::make('belum_sesuai')
+                ->label('Belum Sesuai')
+                ->numeric()
+                ->minValue(0)
+                ->required()->default(0),
+
+            TextInput::make('belum_ditindaklanjuti')
+                ->label('Belum Ditindaklanjuti')
+                ->numeric()
+                ->minValue(0)
+                ->required()->default(0),
+
+            TextInput::make('tahun')
+                ->label('Tahun')
+                ->numeric()
+                ->default(now()->year)
+                ->minValue(2020)
+                ->maxValue(now()->year)
+                ->required(),
+
+            Select::make('semester')
+                ->label('Semester')
+                ->options([
+                    1 => 'Semester 1',
+                    2 => 'Semester 2',
+                ])
+                ->required(),
+        ]);
     }
 
+    /* =========================
+     * TABLE
+     * ========================= */
     public static function table(Table $table): Table
     {
-        return $table
+        return $table->headerActions([
+
+            Tables\Actions\CreateAction::make()
+                ->label('Tambah')
+                ->icon('heroicon-o-plus-circle'),
+
+            Tables\Actions\Action::make('import_excel')
+                ->label('Import Excel')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->form([
+                    \Filament\Forms\Components\TextInput::make('tahun')
+                        ->numeric()
+                        ->default(now()->year)
+                        ->required(),
+
+                    \Filament\Forms\Components\Select::make('semester')
+                        ->options([
+                            1 => 'Semester 1',
+                            2 => 'Semester 2',
+                        ])
+                        ->required(),
+
+                    \Filament\Forms\Components\FileUpload::make('file')
+                        ->disk('local')
+                        ->directory('imports')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    \Maatwebsite\Excel\Facades\Excel::import(
+                        new \App\Imports\TlBpkImport(
+                            (int) $data['tahun'],
+                            (int) $data['semester']
+                        ),
+                        \Illuminate\Support\Facades\Storage::path($data['file'])
+                    );
+                }),
+        ])
             ->columns([
+
                 TextColumn::make('nama_skpd')
                     ->label('Nama SKPD')
-                    ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
 
                 TextColumn::make('tahun')
-                    ->label('Tahun')
                     ->sortable(),
+
                 TextColumn::make('semester')
-                    ->label('Semester')
+                    ->sortable(),
+
+                TextColumn::make('jumlah_rekomendasi')
+                    ->label('Rekomendasi')
+                    ->sortable(),
+
+                TextColumn::make('sesuai')
+                    ->label('Sesuai')
+                    ->sortable(),
+                TextColumn::make('belum_sesuai')
+                    ->label('Belum Sesuai')
+                    ->sortable(),
+
+                TextColumn::make('belum_ditindaklanjuti')
+                    ->label('Belum Ditindaklanjuti')
                     ->sortable(),
 
                 TextColumn::make('persentase_tl')
-                    ->label('Persentase TL (%)')
-                    ->sortable()
+                    ->label('Persentase TL')
                     ->badge()
-                    ->color(function ($record) {
-                        if ($record->persentase_tl >= 80) {
-                            return 'success'; // Hijau
-                        } elseif ($record->persentase_tl >= 60) {
-                            return 'warning'; // Kuning
-                        }
-
-                        return 'danger'; // Merah
-                    })
-                    ->formatStateUsing(function ($state) {
-                        return number_format($state, 2, ',', '.').' %';
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make()
-
-                    ->label('Hapus Terpilih')
-                    ->color('danger')
-                    ->icon('heroicon-o-trash')
-                    ->requiresConfirmation()
-                    ->modalHeading('Konfirmasi Hapus')
-                    ->modalDescription('Apakah kamu yakin ingin menghapus data yang dipilih? Tindakan ini tidak bisa dibatalkan.')
-                    ->modalSubmitActionLabel('Ya, Hapus')
-                    ->modalCancelActionLabel('Batal'),
+                    ->sortable()
+                    ->color(fn ($record) => $record->persentase_tl >= 80 ? 'success'
+                        : ($record->persentase_tl >= 60 ? 'warning' : 'danger')
+                    )
+                    ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.').' %'
+                    ),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('tahun')
                     ->label('Tahun')
                     ->options(
-                        TlBpk::distinct()
+                        TlBpk::query()
+                            ->select('tahun')
+                            ->distinct()
                             ->orderBy('tahun', 'desc')
                             ->pluck('tahun', 'tahun')
                     ),
@@ -152,16 +189,13 @@ class TlBpkResource extends Resource
                         2 => 'Semester 2',
                     ]),
             ])
-
-            ->filtersFormColumns(2)
-
-            ->filtersLayout(Tables\Enums\FiltersLayout::Dropdown) // ⭐ kunci utama ⭐
-
-            ->defaultSort(function ($query) {
-                $query->orderBy('tahun', 'desc')
-                    ->orderBy('semester', 'desc')
-                    ->orderBy('persentase_tl', 'desc');
-            });
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make()
+                    ->label('Hapus Terpilih')
+                    ->color('danger')
+                    ->requiresConfirmation(),
+            ])
+            ->defaultSort('tahun', 'desc');
     }
 
     public static function getPages(): array

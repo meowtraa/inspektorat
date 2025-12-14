@@ -14,19 +14,19 @@ class McpAreaResource extends Resource
 {
     protected static ?string $model = McpArea::class;
 
-    protected static ?string $navigationGroup = 'MCP KPK';
+    protected static ?string $navigationGroup = 'MCSP KPK';
 
-    protected static ?string $pluralModelLabel = 'Area MCP KPK';
+    protected static ?string $pluralModelLabel = 'Area MCSP KPK';
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static ?string $navigationLabel = 'Area MCP KPK';
+    protected static ?string $navigationLabel = 'Area MCSP KPK';
 
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\TextInput::make('name')
-                ->label('Nama Area MCP KPK')
+                ->label('Nama Area MCSP KPK')
                 ->required()
                 ->maxLength(255),
         ]);
@@ -37,13 +37,13 @@ class McpAreaResource extends Resource
         return $table
             ->columns([
 
-                Tables\Columns\TextColumn::make('name')->label('Area MCP KPK')->searchable(),
+                Tables\Columns\TextColumn::make('name')->label('Area MCSP KPK')->searchable(),
 
             ])
 
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->modalHeading('Ubah Area MCP KPK'),
+                    ->modalHeading('Ubah Area MCSP KPK'),
 
             ])
 

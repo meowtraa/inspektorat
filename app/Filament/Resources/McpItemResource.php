@@ -17,18 +17,18 @@ class McpItemResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-check-circle';
 
-    protected static ?string $pluralModelLabel = 'Indikator MCP KPK';
+    protected static ?string $pluralModelLabel = 'Indikator MCSP KPK';
 
-    protected static ?string $navigationLabel = 'Indikator MCP KPK';
+    protected static ?string $navigationLabel = 'Indikator MCSP KPK';
 
-    protected static ?string $navigationGroup = 'MCP KPK';
+    protected static ?string $navigationGroup = 'MCSP KPK';
 
     public static function form(Form $form): Form
     {
         return $form->schema([
 
             Forms\Components\Select::make('area_id')
-                ->label('Area MCP KPK')
+                ->label('Area MCSP KPK')
                 ->options(McpArea::pluck('name', 'id'))
                 ->searchable()
                 ->preload()
